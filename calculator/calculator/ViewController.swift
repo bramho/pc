@@ -10,14 +10,25 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    var numberOnScreen: Double = 0
+    let currencyUrlString: String = "https://api.fixer.io/latest?base="
+    
     var previousNumber: Double = 0
+    var currentNumber: String = ""
+    var operation: Int = 0
     var lastOutcome: Double = 0
-    var nextNumber: String = "0"
-    var performingMath = false
+    var isSecondNumber = false
     var isSecondOperator = false
-    var operation = 0
-    var lastOperation = 0
+    
+    struct Currency: Decodable {
+        let base: String
+        let date: String
+        let rates: Rates
+    }
+    
+    struct Rates: Decodable {
+        let USD: Double?
+        let EUR: Double?
+    }
     
     @IBOutlet weak var inputLabel: UILabel!
     
@@ -25,157 +36,100 @@ class ViewController: UIViewController {
     
     @IBAction func numbers(_ sender: UIButton)
     {
-        print("")
-        print("PERFORMING MATH: " + String(performingMath))
-        print("")
-        print("IS SECOND OPERATOR: " + String(isSecondOperator))
-        print("")
-        print("OPERATION: " + String(operation))
-        print("")
         
-        
-        if performingMath == true {
-            inputLabel.text = inputLabel.text! + String(sender.tag - 1)
-            nextNumber = String(sender.tag - 1)
-            performingMath = false
-            
-            displayOutcome()
+        if sender.tag == 0 {
+            inputLabel.text = inputLabel.text! + "."
+            label.text = label.text! + "."
+            currentNumber = currentNumber + "."
         } else {
             inputLabel.text = inputLabel.text! + String(sender.tag - 1)
-            print("")
-            print("NEXT NUMBER (BEFORE): " + nextNumber)
-            print("")
-            nextNumber = String(Double(nextNumber)! + Double(sender.tag - 1))
-            print("")
-            print("NEXT NUMBER (AFTER): " + nextNumber)
-            print("")
-            print(String(sender.tag - 1))
-            print("")
+            currentNumber = currentNumber + String(sender.tag - 1)
             
-            if isSecondOperator {
+            if isSecondNumber {
                 displayOutcome()
             } else {
-                previousNumber = Double(inputLabel.text!)!
-            }
-            
-            if operation != 0 {
-                displayOutcome()
+                label.text = label.text! + String(sender.tag - 1)
             }
         }
     }
     
     @IBAction func buttons(_ sender: UIButton)
     {
-        print("BUTTON CLICK " + String(sender.tag))
-        print("")
         
         if inputLabel.text != "" && sender.tag != 11 && sender.tag != 16 {
             
-            if operation != 0 {
-                
-                isSecondOperator = true
-                lastOperation = sender.tag
-                operation = 0
-                displayOutcome()
-                
+            if operation == 0 {
+                previousNumber = Double(currentNumber)!
             } else {
-                
-                operation = sender.tag
-                performingMath = true
-                addOperationToScreen(senderTag: sender.tag)
-                
+                isSecondOperator = true
+                previousNumber = lastOutcome
             }
-        
-            
-        } else if sender.tag == 16 && operation != 16 {
-            inputLabel.text = inputLabel.text! + "="
-            
-            displayOutcome()
             
             operation = sender.tag
+            addOperationToScreen(senderTag: operation)
+            isSecondNumber = true
+            currentNumber = ""
+            
+        } else if sender.tag == 16 && operation != 16 {
+//            Equal-sign Button press
+            if !isSecondNumber {
+                displayOutcome()
+            }
             
         } else if sender.tag == 11 {
+//            Reset button press
             
-            numberOnScreen = 0
             previousNumber = 0
             lastOutcome = 0
             inputLabel.text = ""
             label.text = ""
             operation = 0
-            lastOperation = 0
+            isSecondNumber = false
             isSecondOperator = false
+            currentNumber = ""
         }
         
     }
     
     func displayOutcome() {
         
-        print("")
-        print("LAST OUTCOME: " + String(lastOutcome))
-        print("")
-        print("PREVIOUS NUMBER: " + String(previousNumber))
-        print("")
-        print("NEXT NUMBER: " + String(nextNumber))
-        print("")
-        print("OPERATION: " + String(operation))
-        print("")
-        
         var calculation: Double = 0
-        var firstCalculationNumber: Double = 0
-        
-        if lastOutcome == 0 {
-            firstCalculationNumber = previousNumber
-        } else {
-            firstCalculationNumber = lastOutcome
-        }
 
         switch operation {
         case 12:
             if operation == 12 {
-                calculation = firstCalculationNumber / Double(nextNumber)!
-                
-                label.text = checkIfIntAndCastToString(number: calculation)
+//                Divide
+                calculation = previousNumber / Double(currentNumber)!
             }
             break
         case 13:
             if operation == 13 {
-                calculation = firstCalculationNumber * Double(nextNumber)!
-                
-                label.text = checkIfIntAndCastToString(number: calculation)
+//                Multiply
+                calculation = previousNumber * Double(currentNumber)!
             }
             break
         case 14:
             if operation == 14 {
-                calculation = firstCalculationNumber - Double(nextNumber)!
-                
-                label.text = checkIfIntAndCastToString(number: calculation)
+//                Subtract
+                calculation = previousNumber - Double(currentNumber)!
             }
             break
         case 15:
             if operation == 15 {
-                calculation = firstCalculationNumber + Double(nextNumber)!
-                
-                label.text = checkIfIntAndCastToString(number: calculation)
+//                Add
+                calculation = previousNumber + Double(currentNumber)!
             }
             break
         default:
-            calculation = firstCalculationNumber
+            calculation = previousNumber
             break
         }
-        
-        if lastOperation != 0 {
-            inputLabel.text = checkIfIntAndCastToString(number: lastOutcome)
-            addOperationToScreen(senderTag: lastOperation)
-            lastOperation = 0
-        }
 
-        previousNumber = calculation
-//        inputLabel.text = checkIfIntAndCastToString(number: previousNumber)
+        lastOutcome = calculation
+        label.text = String(checkIfIntAndCastToString(number: calculation))
     }
     
     func checkIfIntAndCastToString(number: Double) -> String {
-        lastOutcome = number
-        
         if floor(number) == number {
             return String(Int(number))
         } else {
@@ -184,9 +138,6 @@ class ViewController: UIViewController {
     }
     
     func addOperationToScreen(senderTag: Int) {
-        print("")
-        print("PRINT OPERATOR")
-        print("")
         
         switch senderTag {
         case 12:
@@ -210,6 +161,55 @@ class ViewController: UIViewController {
         }
     }
     
+    @IBAction func currencyButtons(_ sender: UIButton) {
+        if (sender.tag == 1 && label.text != "") {
+//            EUR to USD
+            let currencyAPIUrl = URL(string: currencyUrlString + "EUR")
+            getCurrencyData(url: currencyAPIUrl!, from: "EUR")
+            
+        } else if (sender.tag == 2 && label.text != "") {
+//            USD to EUR
+            let currencyAPIUrl = URL(string: currencyUrlString + "USD")
+            getCurrencyData(url: currencyAPIUrl!, from: "USD")
+        }
+    }
+    
+    func getCurrencyData(url: URL, from: String) {
+        
+        URLSession.shared.dataTask(with: url) { (data, response, err) in
+            
+            guard let data = data else { return }
+            
+            do {
+                let jsonData = try JSONDecoder().decode(Currency.self, from: data)
+                
+                DispatchQueue.main.async {
+                    var labelNumber: Double = 0
+                    
+                    if self.lastOutcome != 0 {
+                        labelNumber = self.lastOutcome
+                    } else {
+                        labelNumber = Double(self.currentNumber)!
+                    }
+                    
+                    if (from == "EUR") {
+                        self.label.text = "$" + String(Double(labelNumber) * jsonData.rates.USD!)
+                    } else if (from == "USD") {
+                        self.label.text = "€" + String(Double(labelNumber) * jsonData.rates.EUR!)
+                    }
+                    
+                }
+            
+            } catch {
+                print("ERR")
+            }
+            
+            }.resume()
+    }
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
